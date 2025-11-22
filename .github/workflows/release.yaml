@@ -7,7 +7,6 @@ on:
 jobs:
   # ------------------------------------------------------------------
   # JOB 1: Сборка для Windows
-  # Использует fyne-cross на Linux-машине (самый стабильный метод для .exe)
   # ------------------------------------------------------------------
   build_windows:
     name: 🔨 Build Windows (x64)
@@ -26,6 +25,7 @@ jobs:
       - name: Build Windows Binary
         run: |
           fyne-cross windows -arch amd64 \
+            -dir cmd \  # <--- ИСПРАВЛЕНО
             --icon cmd/icon.png \
             --app-id com.report.tracker \
             --name ReportTracker \
@@ -40,7 +40,6 @@ jobs:
 
   # ------------------------------------------------------------------
   # JOB 2: Сборка для macOS (Intel и M1/ARM64)
-  # Использует нативный Fyne CLI на macOS-машине (обходит проблемы с SDK и Docker)
   # ------------------------------------------------------------------
   build_macos:
     name: 🍎 Build macOS (Intel & M1)
@@ -53,7 +52,6 @@ jobs:
         with:
           go-version: '1.21'
       - name: Install Fyne CLI
-        # Используем fyne package, который требует установленный Xcode (есть на macos-latest)
         run: go install fyne.io/fyne/v2/cmd/fyne@latest
 
       # --- Сборка для Intel (amd64) ---
@@ -62,8 +60,8 @@ jobs:
           export CGO_ENABLED=1
           export GOOS=darwin
           export GOARCH=amd64
-          # Используем fyne package (нативный, а не cross)
-          $HOME/go/bin/fyne package -os darwin -icon cmd/icon.png --appID com.report.tracker --name ReportTracker
+          # ИСПРАВЛЕНО: Добавлен флаг -dir cmd
+          $HOME/go/bin/fyne package -os darwin -dir cmd -icon cmd/icon.png --appID com.report.tracker --name ReportTracker
           mv ReportTracker.app ReportTracker_Intel.app
           tar -czf ReportTracker_macOS_Intel.tar.gz ReportTracker_Intel.app
 
@@ -73,7 +71,8 @@ jobs:
           export CGO_ENABLED=1
           export GOOS=darwin
           export GOARCH=arm64
-          $HOME/go/bin/fyne package -os darwin -icon cmd/icon.png --appID com.report.tracker --name ReportTracker
+          # ИСПРАВЛЕНО: Добавлен флаг -dir cmd
+          $HOME/go/bin/fyne package -os darwin -dir cmd -icon cmd/icon.png --appID com.report.tracker --name ReportTracker
           mv ReportTracker.app ReportTracker_M1.app
           tar -czf ReportTracker_macOS_M1.tar.gz ReportTracker_M1.app
 
