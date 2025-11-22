@@ -22,7 +22,7 @@ func Run() {
 		a.Settings().SetTheme(ui.NewForcedTheme(theme.VariantDark))
 	}
 
-	w := a.NewWindow("Report Tracker v1.1")
+	w := a.NewWindow("Report Tracker v2.0")
 
 	// Загрузка иконки (без изменений)
 	iconData, err := os.ReadFile("icon.png")
