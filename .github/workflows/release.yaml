@@ -1,9 +1,7 @@
 name: Build and Release
-
 on:
   release:
     types: [created]
-
 jobs:
   # ------------------------------------------------------------------
   # JOB 1: Сборка для Windows ( fyne-cross )
@@ -24,20 +22,19 @@ jobs:
           echo "$HOME/go/bin" >> $GITHUB_PATH
       - name: Build Windows Binary
         run: |
-          $HOME/go/bin/fyne-cross windows --arch amd64 \
+          $HOME/go/bin/fyne-cross windows -arch=amd64 \
             --icon cmd/icon.png \
-            --app-id com.report.tracker \
+            --appID com.report.tracker \
             --name ReportTracker \
             --output ReportTracker \
-            -dir cmd # <--- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Используем -dir cmd
+            ./cmd
       - name: Prepare Artifact
         run: |
-          mv fyne-cross/bin/windows-amd64/ReportTracker.exe ReportTracker_Windows_x64.exe
+          mv fyne-cross/dist/windows-amd64/ReportTracker.exe ReportTracker_Windows_x64.exe
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
           files: ReportTracker_Windows_x64.exe
-
   # ------------------------------------------------------------------
   # JOB 2: Сборка для macOS ( fyne package )
   # ------------------------------------------------------------------
@@ -53,7 +50,6 @@ jobs:
           go-version: '1.21'
       - name: Install Fyne CLI
         run: go install fyne.io/fyne/v2/cmd/fyne@latest
-
       # --- Сборка для Intel (amd64) ---
       - name: 📦 Package macOS Intel (amd64)
         run: |
@@ -67,7 +63,6 @@ jobs:
             --name ReportTracker
           mv ReportTracker.app ReportTracker_Intel.app
           tar -czf ReportTracker_macOS_Intel.tar.gz ReportTracker_Intel.app
-
       # --- Сборка для Apple Silicon (arm64/M1) ---
       - name: 📦 Package macOS Apple Silicon (arm64)
         run: |
@@ -81,7 +76,6 @@ jobs:
             --name ReportTracker
           mv ReportTracker.app ReportTracker_M1.app
           tar -czf ReportTracker_macOS_M1.tar.gz ReportTracker_M1.app
-
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
