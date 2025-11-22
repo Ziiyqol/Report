@@ -5,43 +5,61 @@ on:
     types: [created]
 
 jobs:
-  # Задача 1: Подготовка macOS SDK (выполняется 1 раз)
-  prepare_darwin:
-    name: Prepare Darwin SDK
-    runs-on: ubuntu-latest
+  # Задача 1: Сборка macOS Intel (требует macOS-машины из-за Xcode)
+  build_darwin_intel:
+    name: Build macOS Intel (amd64)
+    # ИЗМЕНЕНИЕ: Используем macOS-машину
+    runs-on: macos-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Setup fyne-cross
-        # Устанавливаем fyne-cross, который нужен для работы команды darwin-sdk-extract
-        run: |
-          go install github.com/fyne-io/fyne-cross@latest
-          echo "$HOME/go/bin" >> $GITHUB_PATH
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
           
-      - name: Extract Darwin SDK
-        # Скачиваем и устанавливаем необходимый SDK Apple
-        run: fyne-cross darwin-sdk-extract
+      - name: Setup fyne-cross
+        run: go install github.com/fyne-io/fyne-cross@latest
         
-      - name: Clean up
-        # Удаляем временные файлы
-        run: rm -f *.dmg
+      - name: Build and Package Darwin Intel
+        # Компилируем напрямую, так как Xcode доступен
+        run: |
+          $HOME/go/bin/fyne-cross darwin \
+            -arch amd64 \
+            --icon cmd/icon.png \
+            --app-id com.report.tracker \
+            --name ReportTracker
+          
+      - name: Prepare Artifact Names
+        run: |
+          SOURCE_PATH="fyne-cross/bin/darwin-amd64/ReportTracker.app.tar.gz"
+          ARTIFACT_NAME="ReportTracker_macOS_Intel.tar.gz"
+          echo "SOURCE_PATH=${SOURCE_PATH}" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=${ARTIFACT_NAME}" >> $GITHUB_ENV
+          
+      - name: Copy Artifact to Root
+        run: mv ${{ env.SOURCE_PATH }} ${{ env.ARTIFACT_NAME }}
 
-  # Задача 2: Главная сборка (зависит от подготовки SDK)
-  build:
-    name: Build for ${{ matrix.os }}/${{ matrix.arch }}
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ env.ARTIFACT_NAME }}
+
+
+  # Задача 2: Сборка Windows и macOS M1 (может использовать Docker на Ubuntu)
+  build_cross:
+    name: Build Cross-Platform (${{ matrix.os }}/${{ matrix.arch }})
     runs-on: ubuntu-latest
-    needs: [prepare_darwin] # Указываем, что сборка macOS зависит от успешной подготовки SDK
     
+    # ИЗМЕНЕНИЕ: Исключаем Intel, так как он собран выше.
     strategy:
       matrix:
         include:
           - os: windows
             arch: amd64
-          - os: darwin
-            arch: amd64
-          - os: darwin
-            arch: arm64
+          - os: darwin # Только M1/ARM64
+            arch: arm64 
 
     steps:
       - name: Checkout code
@@ -53,17 +71,16 @@ jobs:
           go-version: '1.21'
       
       - name: Setup fyne-cross
-        # Устанавливаем fyne-cross и добавляем его в PATH для этой задачи
         run: |
           go install github.com/fyne-io/fyne-cross@latest
           echo "$HOME/go/bin" >> $GITHUB_PATH
 
       - name: Run Fyne-Cross Build
-        # ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ КОМАНДА:
+        # fyne-cross может собирать Windows и M1/ARM64 без Xcode
         run: |
           fyne-cross ${{ matrix.os }} \
             -arch ${{ matrix.arch }} \
-            --icon cmd/icon.png \ # Используем правильный путь к иконке
+            --icon cmd/icon.png \
             --app-id com.report.tracker \
             --name ReportTracker \
             --output ReportTracker
@@ -78,12 +95,7 @@ jobs:
               ARTIFACT_NAME="ReportTracker_Windows_x64.exe"
           elif [[ "${{ matrix.os }}" == "darwin" ]]; then
               SOURCE_PATH="fyne-cross/bin/${OS_ARCH}/ReportTracker.app.tar.gz"
-              
-              if [[ "${{ matrix.arch }}" == "amd64" ]]; then
-                  ARTIFACT_NAME="ReportTracker_macOS_Intel.tar.gz"
-              else
-                  ARTIFACT_NAME="ReportTracker_macOS_M1.tar.gz"
-              fi
+              ARTIFACT_NAME="ReportTracker_macOS_M1.tar.gz"
           fi
           
           echo "SOURCE_PATH=${SOURCE_PATH}" >> $GITHUB_ENV
