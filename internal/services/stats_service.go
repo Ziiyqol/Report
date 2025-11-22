@@ -98,6 +98,7 @@ func (s *StatsService) UndoLast() {
 		s.state.Recorded--
 	case models.ActionReserved:
 		s.state.Reserved--
+		s.state.Recorded--
 	case models.ActionThinking:
 		s.state.Thinking--
 	case models.ActionRejected:
